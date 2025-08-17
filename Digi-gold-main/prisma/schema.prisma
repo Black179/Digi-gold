@@ -1,0 +1,177 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  password  String
+  phone     String?
+  avatar    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  trades     Trade[]
+  holdings   GoldHolding[]
+  watchlist  WatchlistItem[]
+  orders     Order[]
+  sessions   Session[]
+  priceAlerts PriceAlert[]
+  notifications Notification[]
+
+  @@map("users")
+}
+
+model Trade {
+  id        String   @id @default(cuid())
+  userId    String
+  type      TradeType
+  goldType  String   // 24K, 22K, 18K, 14K
+  amount    Float    // in ounces
+  price     Float    // price per ounce
+  total     Float    // total amount
+  status    TradeStatus @default(PENDING)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("trades")
+}
+
+model GoldHolding {
+  id       String @id @default(cuid())
+  userId   String
+  goldType String // 24K, 22K, 18K, 14K
+  amount   Float  // total ounces held
+  avgPrice Float  // average purchase price
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, goldType])
+  @@map("gold_holdings")
+}
+
+model Order {
+  id        String      @id @default(cuid())
+  userId    String
+  type      OrderType
+  goldType  String
+  amount    Float
+  targetPrice Float?
+  status    OrderStatus @default(ACTIVE)
+  expiresAt DateTime?
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("orders")
+}
+
+model MarketData {
+  id        String   @id @default(cuid())
+  goldType  String   // 24K, 22K, 18K, 14K
+  price     Float
+  change    Float    // percentage change
+  volume    Float    // trading volume
+  timestamp DateTime @default(now())
+
+  @@unique([goldType, timestamp])
+  @@map("market_data")
+}
+
+model WatchlistItem {
+  id       String @id @default(cuid())
+  userId   String
+  goldType String
+  createdAt DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, goldType])
+  @@map("watchlist_items")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model PriceAlert {
+  id          String   @id @default(cuid())
+  userId      String
+  goldType    String
+  targetPrice Float
+  condition   String   // 'above' or 'below'
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("price_alerts")
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  message   String
+  type      String
+  data      String   // JSON string
+  timestamp DateTime @default(now())
+  isRead    Boolean  @default(false)
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+enum TradeType {
+  BUY
+  SELL
+}
+
+enum TradeStatus {
+  PENDING
+  COMPLETED
+  CANCELLED
+  FAILED
+}
+
+enum OrderType {
+  BUY
+  SELL
+}
+
+enum OrderStatus {
+  ACTIVE
+  FILLED
+  CANCELLED
+  EXPIRED
+}
